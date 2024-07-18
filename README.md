@@ -1,7 +1,11 @@
 Integrantes:
+
 Gabriel Delgado
+
 Marco Agrusa
+
 Nadine Chancay
+
 Jose Chirinos
 
 Análisis Exploratorio de Energías Renovables
