@@ -1,0 +1,484 @@
+---
+title: "Energía Renovables en el Mundo 1985-2021"
+author: 'Marco Agrusa, Nadine Chancay, Jose Chirinos y Gabriel Delgado'
+date: "2024-06-17"
+output: html_document
+---
+
+```{r, echo = FALSE, results='hide', message=FALSE}
+
+# LIBRERIAS ---------------------------------------------------------------
+library(tidyverse)
+library(dplyr)
+library(gridExtra)
+
+# CARGAR CSV ------------------------------------------------------------
+
+#  Cambiar directorio del proyecto a la carpeta actual
+
+dir <- getwd()
+setwd(dir)
+
+
+#Dataset General sobre Consumo de Energías Renovables
+ConsumoEnergiasRenovablesG <- read.csv("01 renewable-share-energy.csv")
+head(ConsumoEnergiasRenovablesG,10)
+colnames(ConsumoEnergiasRenovablesG) <- c("Pais", "ID", "Año", "Porcentaje_Consumo")
+head(ConsumoEnergiasRenovablesG,10)
+
+#Dataset General sobre Producción de Energías Renovables
+ProduccionEnergiasRenovablesG <- read.csv("04 share-electricity-renewables.csv")
+head(ProduccionEnergiasRenovablesG,10)
+colnames(ProduccionEnergiasRenovablesG) <- c("Pais", "ID", "Año", "Porcentaje_Produccion")
+head(ProduccionEnergiasRenovablesG,10)
+
+#Dataset Específico sobre Cnatidad en TWh por tipo de Energías Renovables
+EnergiasRenovablesE <- read.csv("03 modern-renewable-prod.csv")
+head(EnergiasRenovablesE,10)
+colnames(EnergiasRenovablesE) <- c("Pais", "ID", "Año", "Eólica", "Hidroelétrica", "Solar", "Otras")
+head(EnergiasRenovablesE,50)
+
+# AJUSTE DE DATOS -----------------------------------------------------
+# Se ajustan los datos para tener datos consistentes en todas las tablas
+# asi como el mismo tamaño.
+
+ProduccionEnergiasRenovablesG <- semi_join(ProduccionEnergiasRenovablesG, 
+                                           ConsumoEnergiasRenovablesG, 
+                                           by = c("Pais", "Año")) %>% mutate_if(is.numeric, round, 4)
+ConsumoEnergiasRenovablesG <- semi_join(ConsumoEnergiasRenovablesG, 
+                                        ProduccionEnergiasRenovablesG, 
+                                        by = c("Pais", "Año")) %>% mutate_if(is.numeric, round, 4)
+EnergiasRenovablesE <- semi_join(EnergiasRenovablesE, 
+                                 ConsumoEnergiasRenovablesG, 
+                                 by = c("Pais", "Año")) %>% mutate_if(is.numeric, round, 4)
+
+# CÁLCULOS ------------------------------------------------------------
+
+EnergiasRenovablesE <- EnergiasRenovablesE %>%
+  mutate(Total = Eólica + Hidroelétrica + Solar + Otras) %>%  #Total de TWh por año
+  mutate(PorcentajeConsumoHidro = Hidroelétrica * ConsumoEnergiasRenovablesG$Porcentaje_Consumo / Total)  %>%
+  mutate(PorcentajeConsumoEolica = Eólica * ConsumoEnergiasRenovablesG$Porcentaje_Consumo / Total)  %>%
+  mutate(PorcentajeConsumoSolar = Solar * ConsumoEnergiasRenovablesG$Porcentaje_Consumo / Total)  %>%
+  mutate(PorcentajeConsumoOtras = Otras * ConsumoEnergiasRenovablesG$Porcentaje_Consumo / Total)  %>%
+  mutate(PorcentajeProducciónHidro = Hidroelétrica * ProduccionEnergiasRenovablesG$Porcentaje_Produccion / Total)  %>%
+  mutate(PorcentajeProducciónEolica = Eólica * ProduccionEnergiasRenovablesG$Porcentaje_Produccion / Total)  %>%
+  mutate(PorcentajeProducciónSolar = Solar * ProduccionEnergiasRenovablesG$Porcentaje_Produccion / Total)  %>%
+  mutate(PorcentajeProducciónOtras = Otras * ProduccionEnergiasRenovablesG$Porcentaje_Produccion / Total) %>% 
+  mutate_if(is.numeric, round, 4)
+
+
+#Se asigna NA a los campos en blanco en ID para facilitar futuras búsquedas
+ProduccionEnergiasRenovablesG$ID[ProduccionEnergiasRenovablesG$ID == ""] <- NA
+ConsumoEnergiasRenovablesG$ID[ConsumoEnergiasRenovablesG$ID == ""] <- NA
+EnergiasRenovablesE$ID[EnergiasRenovablesE$ID == ""] <- NA
+
+org <- c("Africa (BP)", "Asia Pacific (BP)", "CIS (BP)", "Central America (BP)", 
+         "Eastern Africa (BP)", "Europe (BP)",  "European Union (27)", 
+         "High-income countries", "Lower-middle-income countries", 
+         "Middle Africa (BP)", "Middle East (BP)", "Non-OECD (BP)", 
+         "North America (BP)", "South and Central America (BP)", 
+         "Upper-middle-income countries", "Western Africa (BP)", "OECD (BP)")
+
+```
+## *Energías Renovables*
+
+La energía renovable se caracteriza por provenir de fuentes o procesos que se reponen constantemente, tales como la energía solar, eólica, geotérmica e hidroeléctrica. Estas fuentes de energía, a menudo asociadas con la energía verde y limpia, presentan matices importantes: mientras que las fuentes renovables son reciclables, la energía limpia se define por su capacidad de no emitir contaminantes como el dióxido de carbono, y la energía verde se obtiene exclusivamente de fuentes naturales. En este contexto, nuestro estudio se centra en tres de las formas más prominentes de energía renovable: solar, eólica e hidroeléctrica.
+
+La motivación detrás de este estudio radica en la necesidad urgente de transitar hacia un sistema energético más sostenible y menos dependiente de los combustibles fósiles. En un mundo que enfrenta los desafíos del cambio climático y la degradación ambiental, la adopción y optimización de las energías renovables se convierte en una prioridad global. Este ensayo busca entender las dinámicas y los factores que impulsan el desarrollo de estas energías, con un enfoque particular en la notable expansión de la energía solar en Asia, el crecimiento de la energía eólica a partir de los años 2000, y el rol constante de la energía hidroeléctrica.
+
+La relevancia de este análisis se extiende más allá de la simple descripción de tendencias. Identificar los factores que han permitido a Asia liderar en la producción de energía solar puede ofrecer lecciones valiosas para otras regiones menos avanzadas en el desarrollo de energías renovables. Además, entender las políticas y tecnologías que han facilitado el crecimiento de la energía eólica y mantener la predominancia de la hidroeléctrica puede guiar la implementación de estrategias efectivas en otras partes del mundo.
+
+
+Para este proyecto, hemos empleado un conjunto de datos obtenidos de diferentes plantas de producción de energías renovables a lo largo del mundo en un periodo de tiempo. Los datos incluyen:
+
+**País:** Nombre del país.
+
+**Id:** Identificador del continente al que pertenece el país.
+
+**Año:** Año en el que se realizó la recolección de los datos.
+
+**Eólica:** Producción en teravatios-hora (TWh) a través de la energía eólica.
+
+**Hidroeléctrica:** Producción en teravatios-hora (TWh) a través de la energía hidroeléctrica.
+
+**Solar:** Producción en teravatios-hora (TWh) a través de la energía solar.
+
+**Total:** Suma total de la producción de energía eólica, hidroeléctrica y solar.
+
+**PorcentajeConsumo:** Porcentaje de consumo proveniente de las energías solar, eólica e hidroeléctrica.
+
+**PorcentajeConsumoHidro:** Porcentaje de consumo de energía hidroeléctrica.
+
+**PorcentajeConsumoSolar:** Porcentaje de consumo de energía solar.
+
+**PorcentajeConsumoEolica:** Porcentaje de consumo de energía eólica.
+
+**PorcentajeProduccionSolar:** Porcentaje de producción de energía solar.
+
+**PorcentajeProduccionHidroelectrica:** Porcentaje de producción de energía hidroeléctrica.
+
+**CapacidadTotal:** Capacidad total de producción de las plantas de energía solar de un país.
+
+**TotalPlantas:** Número total de plantas de energía solar en un país.
+
+El análisis detallado de la producción y consumo de energías renovables es crucial por varias razones. En primer lugar, la transición hacia fuentes de energía sostenibles es esencial para mitigar el cambio climático y reducir la dependencia de los combustibles fósiles, que son finitos y contaminantes. Además, comprender las dinámicas de producción y consumo puede ayudar a identificar áreas de mejora y optimización, tanto en términos de eficiencia energética como de políticas públicas. El conocimiento detallado de estas dinámicas también puede guiar inversiones estratégicas y fomentar el desarrollo económico en regiones que aún no han explotado plenamente su potencial renovable.
+
+### *Metodología empleada*
+
+En nuestro proyecto, hemos decidido utilizar la metodología KDD (Knowledge Discovery in Databases) debido a que es un proceso integral de descubrimiento de conocimiento a partir de grandes volúmenes de datos. La metodología KDD consta de los siguientes pasos:
+
+**Selección de Datos:** Selección del conjunto de datos o un subconjunto relevante para el análisis a partir de una base de datos.
+Preprocesamiento de Datos: Limpieza y procesamiento de los datos para eliminar ruido, manejar valores faltantes y preparar los datos para el análisis.
+
+**Transformación de Datos:** Transformación de los datos en un formato adecuado para el análisis mediante normalización, agregación u otras técnicas de transformación.
+
+**Evaluación e Interpretación:** Evaluación de los patrones y modelos descubiertos en términos de utilidad, precisión y validez. Interpretación para extraer conocimientos significativos.
+
+**Presentación y Uso del Conocimiento:** Presentación de los conocimientos obtenidos de manera comprensible y utilización para tomar decisiones estratégicas o tácticas.
+
+
+### *Justificación de la Metodología*
+Los proyectos de energía renovable generan una gran cantidad de datos, desde datos meteorológicos hasta datos de producción y consumo de energía. La metodología KDD permite manejar estos grandes volúmenes de datos de manera eficiente.
+
+El análisis de datos proporcionado por KDD nos permitió descubrir nuevas oportunidades de mejora de producciones de energías renovables en países menos desarrollados. Además, KDD facilita un ciclo continuo de mejora, basándose en datos y resultados obtenidos a lo largo del tiempo.
+
+
+```{r, echo = FALSE, results='hide', message=FALSE}
+# Distribución de TWh por Tipo de Energía Renovable
+energia_tipo_anual <- EnergiasRenovablesE %>%
+  group_by(Año) %>%
+  summarise(
+    Eólica = sum(Eólica, na.rm = TRUE),
+    Hidroeléctrica = sum(Hidroelétrica, na.rm = TRUE),
+    Solar = sum(Solar, na.rm = TRUE),
+    Otras = sum(Otras, na.rm = TRUE)
+  ) %>%
+  gather(key = "TipoEnergía", value = "TWh", -Año)
+```
+### *Distribució de teravatios/hora por tipo de energía renovable*
+
+En el gráfico de distribución de teravatios hora (TWh) por tipo de energía renovable, se destaca que la energía hidroeléctrica ha mantenido su supremacía a lo largo de los años. Sin embargo, desde principios de los 2000, han surgido y crecido significativamente otras formas de energía renovable, como la eólica y la solar. Estas nuevas energías han incrementado su participación en el mix energético global, impulsadas por avances tecnológicos y políticas de apoyo a las energías limpias. En resumen, aunque la hidroelectricidad sigue siendo la principal fuente de energía renovable, otras energías han ganado terreno notablemente en las últimas dos décadas.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(energia_tipo_anual, aes(x = as.factor(Año), y = TWh, fill = TipoEnergía)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.9) + # Ajustar el ancho de las barras
+  ggtitle("Distribución de TWh por Tipo de Energía Renovable") +
+  xlab("Año") +
+  ylab("Energía Producida (TWh)") +
+  scale_fill_brewer(palette = "Spectral") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Rotar etiquetas del eje X
+  theme(axis.title.x = element_blank()) + # Eliminar título del eje X
+  theme(axis.text = element_text(size = 10))
+```
+
+
+```{r, echo = FALSE, results='hide', message=FALSE}
+ConsumoEnergiasRenovablesG2 <- ConsumoEnergiasRenovablesG %>%
+  group_by(Año) %>%
+  summarise(Promedio_Consumo = mean(Porcentaje_Consumo, na.rm = TRUE)) %>%
+  mutate_if(is.numeric, round, 1)
+
+  
+
+consumoG <- ggplot(ConsumoEnergiasRenovablesG2, aes(x = factor(Año), y = Promedio_Consumo)) +
+  geom_bar(stat = "identity", fill = "coral", color = "black") +
+  geom_text(aes(label = paste0(round(Promedio_Consumo, 1), "%"), y = Promedio_Consumo), 
+            vjust = -1.0 ,hjust = -0.20, size = 2.5, angle = 45, color = "black", fontface = "bold") +
+  ggtitle("Consumo de Energía Renovable por Año (Promedio)") +
+  xlab("Año") +
+  ylab("Porcentaje de Consumo de Energía Renovable (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ProduccionEnergiasRenovablesG2 <- ProduccionEnergiasRenovablesG %>%
+  group_by(Año) %>%
+  summarise(Promedio_Produccion = mean(Porcentaje_Produccion, na.rm = TRUE)) %>%
+  mutate_if(is.numeric, round, 1)
+
+
+produccionG <- ggplot(ProduccionEnergiasRenovablesG2, aes(x = factor(Año), y = Promedio_Produccion)) +
+  geom_bar(stat = "identity", fill = "green", color = "black") +
+  geom_text(aes(label = paste0(round(Promedio_Produccion, 1), "%"), y = Promedio_Produccion), 
+            vjust = -1.0 ,hjust = -0.20, size = 2.5, angle = 45, color = "black", fontface = "bold") +
+  ggtitle("Producción de Energía Renovable por Año (Promedio)") +
+  xlab("Año") +
+  ylab("Porcentaje de Producción de Energía Renovable (%)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+### *Consumo vs Producción de energía renovable promedio por año*
+Comparamos el consumo promedio anual de energía renovable con su producción promedio anual. Se observa claramente que la producción de energía renovable es significativamente mayor que el consumo. Este desequilibrio indica que, a pesar del creciente uso de energías renovables, aún no se está aprovechando todo su potencial de producción. Factores como la capacidad de almacenamiento de energía, la infraestructura de distribución y la gestión de la demanda podrían estar contribuyendo a esta discrepancia. Optimizar estos aspectos podría ayudar a equilibrar mejor la producción y el consumo de energía renovable, maximizando así los beneficios ambientales y económicos de estas fuentes de energía limpia.
+
+```{r, fig.width=15, fig.height=10}
+grid.arrange(consumoG, produccionG, nrow=2)
+```
+
+
+
+
+## *Energía Hidroeléctrica*
+
+La energía hidroeléctrica representa una de las fuentes de energía renovable más establecidas y prominentes a nivel global. Aprovechando el potencial energético del agua en movimiento, esta forma de generación eléctrica ha desempeñado un papel crucial en la matriz energética de numerosos países durante décadas. Desde su adopción inicial a principios del siglo XX hasta la actualidad, la energía hidroeléctrica ha ofrecido beneficios significativos, incluyendo la producción constante de electricidad, la capacidad de almacenamiento de agua para usos múltiples, y la reducción de emisiones de gases de efecto invernadero en comparación con las fuentes de energía convencionales.
+
+```{r, echo = FALSE, results='hide', message=FALSE}
+EnergiaHidroelectrica_agrupada <- aggregate(Hidroelétrica ~ Año, data = filter(EnergiasRenovablesE, !is.na(ID)), sum)
+
+EnergiaHidroelectrica_agrupada_pais <- aggregate(Hidroelétrica ~ Pais, data = filter(EnergiasRenovablesE, !is.na(ID)), sum)
+
+esa_Hidroelectrica <- head(EnergiaHidroelectrica_agrupada_pais[order(-EnergiaHidroelectrica_agrupada_pais$Hidroelétrica), ], 8)
+
+esa_Hidroelectrica <- esa_Hidroelectrica[esa_Hidroelectrica$Pais != "World", ]
+
+EnergiasRenovablesE_paises_summary_Hidroelectrica <- filter(EnergiasRenovablesE, !is.na(ID)) %>%
+  group_by(Año) %>%
+  summarise( media = mean(Hidroelétrica, na.rm = TRUE),
+             se = sd(Hidroelétrica, na.rm = TRUE)/sqrt(n())) %>%
+  mutate(ci_upper = media + (1.96 * se),
+         ci_lower = media - (1.96 * se))
+```
+
+### *Producción promedio de energía hidroeléctrica por año*
+La gráfica proporciona una representación visual detallada de la producción promedio de energía hidroeléctrica por año, expresada en teravatios por hora (TWh). Esta representación no solo traza la trayectoria anual de la producción media de energía hidroeléctrica, sino que también incorpora un intervalo de confianza que permite apreciar la variabilidad y la incertidumbre asociadas a estas estimaciones. El uso de una línea y puntos azules marca claramente las cifras promedio de producción para cada año, mientras que una banda semitransparente alrededor de esta línea indica los márgenes de error, brindando una visión más completa y fiable de las fluctuaciones y tendencias en la producción de energía hidroeléctrica a lo largo del tiempo.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(EnergiasRenovablesE_paises_summary_Hidroelectrica, aes(x = Año, y = media)) + 
+  geom_line(color = "blue") + geom_point(color = "blue") + 
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), fill = "blue", alpha = 0.2) +
+  ggtitle("Produccion Promedio de Energia Hidroeléctrica por Año") + 
+  xlab("Año") + ylab("Energia Hidroeléctrica Producida (TWh)")
+
+
+```
+
+### *Producción anual de energía hidroeléctrica por continente*
+La siguiente gráfica ofrece una visión detallada de la producción de energía en teravatios por hora (TWh) generada por cada continente a lo largo de los años. Esta representación visual no solo muestra la cantidad de energía producida por cada continente en términos absolutos, sino que también ilustra su progreso y evolución a lo largo del tiempo. Cada línea en la gráfica corresponde a un continente específico, permitiendo una comparación clara y directa entre ellos. A medida que se avanza en el eje temporal, se pueden observar las tendencias de crecimiento o disminución en la producción de energía.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(filter(EnergiasRenovablesE, is.na(ID) & !Pais %in% org), aes(x = Año, y = Hidroelétrica, colour = Pais)) + 
+  geom_line() + geom_point() + 
+  ggtitle("Producción Anual de Energia Hidroeléctrica por Continente") + 
+  xlab("Año") + ylab("Energia Hidroeléctrica (TWh)") + 
+  labs(colour = "Continentes")
+
+```
+
+### *Top 7 países con mayor producción de energía hidroeléctrica*
+
+Esta gráfica de barras proporciona una comparación visual de la producción total de energía hidroeléctrica a nivel mundial, centrándose específicamente en los siete países que lideran como los mayores productores en este sector. Cada barra en la gráfica representa la cantidad de energía hidroeléctrica producida por uno de estos países, medida en teravatios por hora (TWh). Al observar las alturas relativas de las barras, es posible identificar rápidamente cuáles son los países con la mayor producción y cómo se comparan entre sí. Esta visualización no solo destaca la supremacía de estos países en la producción de energía hidroeléctrica, sino que también proporciona un contexto para entender su contribución relativa al total mundial.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(esa_Hidroelectrica, aes(reorder(Pais, Hidroelétrica), y = Hidroelétrica, fill = Pais)) + 
+  geom_bar(stat = "identity")+ 
+  theme_minimal() + 
+  ggtitle("Top 7 Paises con Mayor Produccion de Energia Hidroeléctrica") + 
+  xlab("Pais") + ylab("Energia Hidroeléctrica (TWh)")+ 
+  geom_text(aes(label = Hidroelétrica), vjust = 1.0, color = "white", size = 5, fontface = "bold")
+```
+
+
+
+## *Energía Eólica*
+
+La energía eólica se ha convertido en una pieza clave dentro del panorama energético global, destacándose por su capacidad para generar electricidad de manera sostenible y renovable. Utilizando la fuerza del viento, esta forma de energía ha experimentado un crecimiento significativo en las últimas décadas, impulsada por avances tecnológicos que han mejorado la eficiencia y reducido los costos de producción. El análisis de la energía eólica abarca diversos aspectos, desde la evaluación de recursos eólicos hasta la planificación y operación de parques eólicos, así como su integración efectiva en las redes eléctricas. Este análisis no solo considera aspectos técnicos y económicos, sino también ambientales y sociales, promoviendo un enfoque holístico hacia un futuro energético más sostenible y diversificado.
+```{r, echo = FALSE, results='hide', message=FALSE}
+
+EnergiaEolica_agrupada <- aggregate(Eólica ~ Año, data = filter(EnergiasRenovablesE, !is.na(ID)), sum)
+
+EnergiaEolica_agrupada_pais <- aggregate(Eólica ~ Pais, data = filter(EnergiasRenovablesE, !is.na(ID)), sum)
+
+esa_eolica <- head(EnergiaEolica_agrupada_pais[order(-EnergiaEolica_agrupada_pais$Eólica), ], 8)
+
+esa_eolica <- esa_eolica[esa_eolica$Pais != "World", ]
+
+
+EnergiasRenovablesE_paises_summary_Eolica <- filter(EnergiasRenovablesE, !is.na(ID)) %>%
+  group_by(Año) %>%
+  summarise( media = mean(Eólica, na.rm = TRUE),
+             se = sd(Eólica, na.rm = TRUE)/sqrt(n())) %>%
+  mutate(ci_upper = media + (1.96 * se),
+         ci_lower = media - (1.96 * se))
+
+```
+
+### *Producción promedio de energía eólica por año*
+
+se observa una tendencia al alza a partir del año 2000. La línea de producción muestra un aumento constante, reflejando el crecimiento significativo de esta fuente de energía renovable. A medida que la producción aumenta, también se amplía el intervalo de confianza, lo que sugiere una mayor variabilidad e incertidumbre en los datos conforme avanza el tiempo. Esta expansión del intervalo de confianza puede deberse a factores como la variabilidad en las condiciones del viento, la incorporación de nuevas tecnologías y la variación en la capacidad instalada en diferentes regiones. En resumen, el gráfico evidencia no solo el crecimiento sostenido de la energía eólica, sino también la necesidad de seguir mejorando la predictibilidad y estabilidad de su producción.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(EnergiasRenovablesE_paises_summary_Eolica, aes(x = Año, y = media)) + 
+  geom_line(color = "darkgreen") + geom_point(color = "darkgreen") + 
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), fill = "green", alpha = 0.2) +
+  ggtitle("Produccion Promedio de Energia Eólica por Año") + 
+  xlab("Año") + ylab("Energia Eólica Producida (TWh)")
+  
+
+```
+### *Producción anual de energía eólica por continente*
+
+Se observa una tendencia ascendente en Asia, Europa y América del Norte, donde la producción ha crecido significativamente a lo largo de los años. Estas regiones han invertido considerablemente en tecnología e infraestructura eólica, impulsadas por políticas de apoyo a las energías renovables y la creciente demanda de energía limpia.
+
+En contraste, los continentes de Sudamérica, África y Oceanía muestran una producción mucho menor de energía eólica. La línea de crecimiento en estas regiones es menos pronunciada, reflejando desafíos como la falta de inversión, infraestructura insuficiente y, en algunos casos, condiciones geográficas y políticas menos favorables para el desarrollo de proyectos eólicos a gran escala.
+
+Este desequilibrio en la producción de energía eólica entre los continentes subraya la necesidad de mayores esfuerzos globales para fomentar el desarrollo de energías renovables en todas las regiones, asegurando una distribución más equitativa de los beneficios ambientales y económicos asociados con la energía eólica.
+```{r, fig.width=15, fig.height=10}
+ggplot(filter(EnergiasRenovablesE, is.na(ID) & !Pais %in% org), aes(x = Año, y = Eólica, colour = Pais)) + 
+  geom_line() + geom_point() + 
+  ggtitle("Producción Anual de Energia Eólica por Continente") + 
+  xlab("Año") + ylab("Energia Eólica (TWh)") + 
+  labs(colour = "Continentes")
+
+```
+
+## *Top 7 paises con mayor producción de energía eólica*
+
+En el siguiente gráfico se muestra la producción de energía eólica de los siete países principales. China y Estados Unidos destacan como los dos principales productores, seguidos por Alemania en tercer lugar. A partir de estos tres países principales, la cantidad de producción empieza a disminuir notablemente en los siguientes países de la lista.
+
+```{r, fig.width=15, fig.height=10}
+
+ggplot(esa_eolica, aes(reorder(Pais, Eólica), y = Eólica, fill = Pais)) + 
+  geom_bar(stat = "identity")+ 
+  theme_minimal() + 
+  ggtitle("Top 7 Paises con Mayor Produccion de Energia Eólica") + 
+  xlab("Pais") + ylab("Energia Eólica (TWh)")+ 
+  geom_text(aes(label = Eólica), vjust = 1.0, color = "white", size = 5, fontface = "bold")
+```
+
+
+
+
+
+## *Energía Solar*
+
+La energía solar representa una fuente limpia y sostenible de electricidad, aprovechando la radiación solar para generar energía. Esta tecnología ha ganado popularidad en los últimos años debido a su bajo impacto ambiental y su capacidad para reducir la dependencia de los combustibles fósiles. Los avances en paneles solares y sistemas de almacenamiento han hecho que la adopción de la energía solar sea más accesible y eficiente, contribuyendo así a la transición hacia un futuro energético más verde y sustentable.
+```{r, echo = FALSE, results='hide', message=FALSE}
+EnergiaSolar_agrupada <- aggregate(Solar ~ Año, data = filter(EnergiasRenovablesE, !is.na(ID)), sum)
+
+EnergiaSolar_agrupada_pais <- aggregate(Solar ~ Pais, data = filter(EnergiasRenovablesE, !is.na(ID)), sum)
+
+esa_solar <- head(EnergiaSolar_agrupada_pais[order(-EnergiaSolar_agrupada_pais$Solar), ], 8)
+
+esa_solar <- esa_solar[esa_solar$Pais != "World", ]
+
+EnergiasRenovablesE_paises_summary <- filter(EnergiasRenovablesE, !is.na(ID)) %>%
+  group_by(Año) %>%
+  summarise( media = mean(Solar, na.rm = TRUE),
+             se = sd(Solar, na.rm = TRUE)/sqrt(n())) %>%
+  mutate(ci_upper = media + (1.96 * se),
+         ci_lower = media - (1.96 * se))
+```
+
+### *Producción promedio de energia solar por año*
+
+Se observa un notable aumento en la producción a partir del año 2010, acompañado de un amplio intervalo de confianza. Este incremento refleja el rápido crecimiento y la adopción generalizada de la energía solar como una fuente de energía limpia y renovable. La expansión del intervalo de confianza indica la variabilidad inherente en la producción solar, influenciada por factores como las condiciones climáticas, avances tecnológicos y la capacidad instalada de paneles solares en diferentes regiones. Este análisis subraya la importancia de continuar mejorando la eficiencia y la predictibilidad de la energía solar para maximizar su contribución al mix energético global de manera estable y sostenible.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(EnergiasRenovablesE_paises_summary, aes(x = Año, y = media)) + 
+  geom_line(color = "orange") + geom_point(color = "orange") + 
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), fill = "orange", alpha = 0.2) +
+  ggtitle("Produccion Promedio de Energia Solar por Año") + 
+  xlab("Año") + ylab("Energia Solar Producida (TWh)")
+```
+
+### *Producción anual de energía solar por continente*
+
+Se observa que Europa fue el pionero en comenzar a producir energía solar a partir de 2005. Sin embargo, Asia experimentó un ascenso notable en los años siguientes, superando a Europa en términos de producción. Al mismo tiempo, América del Norte alcanzó y superó a Europa, mientras que África, Sudamérica y Oceanía mostraron una producción solar considerablemente menor en comparación con los otros continentes. Esta tendencia resalta las diferencias regionales en la adopción y expansión de la energía solar, influenciadas por factores como políticas energéticas, disponibilidad de recursos solares y desarrollo tecnológico.
+
+```{r, fig.width=15, fig.height=10}
+ggplot(filter(EnergiasRenovablesE, is.na(ID) & !Pais %in% org), aes(x = Año, y = Solar, colour = Pais)) + 
+  geom_line() + geom_point() + 
+  ggtitle("Producción Anual de Energia Solar por Continente") + 
+  xlab("Año") + ylab("Energia Solar (TWh)") + 
+  labs(colour = "Continentes")
+  
+```
+
+### *Top 7 países con mayor producción de energía solar*
+
+La gráfica de barras ofrece una comparación visual de la producción de energía solar en teravatios por hora (TWh) de los siete principales países productores y la producción total a nivel mundial. China destaca como el líder indiscutible en producción de energía solar con 1252.614 TWh, seguida por Estados Unidos con 723.1643 TWh y Japón con 500.7955 TWh. Alemania ocupa el cuarto lugar con 446.63 TWH. La producción total mundial de energía solar, representada por una barra significativamente más alta con 4770.7683 TWh, subraya la contribución conjunta de numerosos países no listados individualmente. Esta gráfica no solo ilustra las diferencias en la capacidad de producción solar entre los principales países, sino que también destaca la importancia de la contribución global combinada en el panorama de la energía renovable.
+En esta segunda parte desarrollarán el tópico seleccionado; deben argumentar por qué es relevante (justificación), y exponer los hallazgos iniciales o cuestiones que plantean.
+
+```{r, fig.width=15, fig.height=10}
+
+ggplot(esa_solar, aes(reorder(Pais, Solar), y = Solar, fill = Pais)) + 
+  geom_bar(stat = "identity") + 
+  theme_minimal() + 
+  ggtitle("Top 7 Paises con Mayor Produccion de Energia Solar") + 
+  xlab("Pais") + ylab("Energia Solar (TWh)") + 
+  geom_text(aes(label = Solar), vjust = 1.0, color = "white", size = 5, fontface = "bold")
+
+  
+
+```
+
+## *Análisis del Ascenso de Asia en la Producción de Energía Solar*
+
+En las últimas dos décadas, Asia ha emergido como un líder indiscutible en la producción de energía solar, superando a otras regiones y estableciendo nuevos estándares en el sector de las energías renovables. Este notable ascenso plantea preguntas cruciales sobre los factores que han impulsado este crecimiento y las lecciones que pueden extraerse para promover un desarrollo similar en otras regiones menos avanzadas.
+
+Esta sección se dedica a indagar en los motivos detrás del éxito asiático en la energía solar, explorando diversos análisis para proporcionar una comprensión profunda y detallada de este fenómeno.
+
+```{r, fig.width=15, fig.height=10}
+powerPlants <- read.csv('powerplants (global)-global_power_plants.csv')
+
+powerPlants_Solar <- powerPlants %>%
+  filter(primary_fuel == "Solar" | secondary.fuel == "Solar" | other_fuel2 == "Solar" | other_fuel3 == "Solar")
+
+
+powerSolar <- powerPlants_Solar %>% 
+  group_by(country_long) %>%
+  summarise(capacidadTotal = sum(capacity.in.MW, na.rm = TRUE), TotalPlantas = n()) %>%
+  mutate(country_long = recode(country_long, "United States of America" = "United States"))
+
+
+top7_countries_capacity <- powerSolar %>%
+  arrange(desc(capacidadTotal)) %>%
+  mutate(country_long = recode(country_long, "United States of America" = "United States")) %>%
+  head(7)
+
+combined_data <- inner_join(EnergiaSolar_agrupada_pais, powerSolar, by = c("Pais" = "country_long"))
+
+view(combined_data)
+
+correlacion <- cor(combined_data$Solar, combined_data$capacidadTotal, use = "complete.obs")
+
+```
+
+``````{r, fig.width=10, fig.height=7}
+
+ggplot(top7_countries_capacity, aes(x = reorder(country_long, -capacidadTotal), y = capacidadTotal)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(title = "Top 7 Países con Mayor Capacidad Total de Plantas Solares (MW)", x = "País", y = "Capacidad Total (MW)") +
+  theme_minimal()
+
+print(paste("Correlación entre la producción solar y la capacidad total: ", round(correlacion, 2)))
+
+``````
+
+```{r,fig.width=10,fig.height=7}
+ggplot(combined_data, aes(x = Solar, y = capacidadTotal)) +
+  geom_point(color = "blue", size = 3) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  geom_text(data = subset(combined_data, Solar > 50),
+            aes(label = Pais), vjust = -0.5, hjust = 1, size = 4) +
+  labs(title = "Relación entre la Producción de Energía Solar y la Capacidad Total (MW)",
+       x = "Producción de Energía Solar (TWh)",
+       y = "Capacidad Total (MW)") +
+  theme_minimal() +
+  annotate("text", x = max(combined_data$Solar) * 0.7, y = max(combined_data$capacidadTotal) * 0.9,
+           label = paste("Correlación: ", round(correlacion, 2)), size = 5, color = "darkgreen")
+```
+
+
+## *Conlusión*
+La energía solar emerge como una solución prometedora y sostenible para abordar los desafíos energéticos globales, ofreciendo un potencial considerable para mitigar el cambio climático y preservar el medio ambiente. El análisis exploratorio de datos revela un crecimiento exponencial en su producción, aunque aún existe un potencial sin explotar que requiere abordar desafíos críticos.
+
+Entre estos desafíos se encuentran la desigualdad regional en la adopción de energías renovables, la integración efectiva en las redes eléctricas y la necesidad de políticas públicas robustas que fomenten su expansión a gran escala. La colaboración internacional y la innovación tecnológica son esenciales para desbloquear este potencial, facilitando una transición hacia un futuro energético más sostenible para las generaciones futuras.
+
+Las recomendaciones enfatizan la importancia de gestionar cuidadosamente proyectos hidroeléctricos para minimizar impactos adversos, así como la necesidad de continuar innovando y apoyando políticas efectivas para el crecimiento sostenible de la energía eólica. El ascenso significativo de la energía solar en Asia ilustra cómo políticas energéticas favorables y avances tecnológicos pueden servir de modelo para otros continentes en su camino hacia una mayor adopción de energías renovables.
+
+A pesar de los retos regionales en África, Sudamérica y Oceanía, estrategias como el apoyo financiero y la cooperación internacional pueden allanar el camino para superar estas barreras, promoviendo un desarrollo equitativo y sostenible de las energías renovables a nivel global.
+
+En resumen, avanzar hacia un panorama energético más sostenible demanda un enfoque global y colaborativo, integrando innovación tecnológica con políticas públicas efectivas, al mismo tiempo que se enfrentan las limitaciones técnicas como la disponibilidad intermitente y la variabilidad climática propia de las energías renovables.
